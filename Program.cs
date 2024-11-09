@@ -2,17 +2,38 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Lambda
+namespace TaskIntro;
+
+class CustomData
 {
-   public static void Main()
-   {
-      Thread.CurrentThread.Name = "Main";
+    public long CreationTime;
+    public int Name;
+    public int ThreadNum;
+}
 
-      // Define and run the task.
-      Task taskA = Task.Run( () => Console.WriteLine("Hello from taskA."));
+public class AsyncState
+{
+    public static void Main()
+    {
+        Task[] taskArray = new Task[10];
+        for (int i = 0; i < taskArray.Length; i++)
+        {
+            taskArray[i] = Task.Factory.StartNew((Object? obj) =>
+            {
+                CustomData? data = obj as CustomData;
+                if (data == null) return;
 
-      // Output a message from the calling thread.
-      Console.WriteLine("Hello from thread '{0}'.", Thread.CurrentThread.Name);
-      taskA.Wait();
-   }
+                data.ThreadNum = Thread.CurrentThread.ManagedThreadId;
+            },
+            new CustomData() { Name = i, CreationTime = DateTime.Now.Ticks });
+        }
+        Task.WaitAll(taskArray);
+        foreach (var task in taskArray)
+        {
+            var data = task.AsyncState as CustomData;
+            if (data != null)
+                Console.WriteLine("Task #{0} created at {1}, ran on thread #{2}.",
+                                  data.Name, data.CreationTime, data.ThreadNum);
+        }
+    }
 }
