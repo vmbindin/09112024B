@@ -1,34 +1,45 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
-public class Result
+class CustomData
+{
+   public long CreationTime;
+   public int Name;
+   public int ThreadNum;
+}
+
+public class IterationOne
 {
    public static void Main()
    {
-        Task<Double>[] taskArray = { Task<Double>.Factory.StartNew(() => DoComputation(1.0)),
-                                     Task<Double>.Factory.StartNew(() => DoComputation(100.0)),
-                                     Task<Double>.Factory.StartNew(() => DoComputation(1000.0)) };
+      // Create the task object by using an Action(Of Object) to pass in custom data
+      // to the Task constructor. This is useful when you need to capture outer variables
+      // from within a loop.
+      Task[] taskArray = new Task[10];
+      for (int i = 0; i < taskArray.Length; i++) {
+         taskArray[i] = Task.Factory.StartNew( (Object? obj ) => {
+                                                  CustomData? data = obj as CustomData;
+                                                  if (data == null)
+                                                     return;
 
-        var results = new Double[taskArray.Length];
-        Double sum = 0;
-
-        for (int i = 0; i < taskArray.Length; i++) {
-            results[i] = taskArray[i].Result;
-            Console.Write("{0:N1} {1}", results[i],
-                              i == taskArray.Length - 1 ? "= " : "+ ");
-            sum += results[i];
-        }
-        Console.WriteLine("{0:N1}", sum);
-   }
-
-   private static Double DoComputation(Double start)
-   {
-      Double sum = 0;
-      for (var value = start; value <= start + 10; value += .1)
-         sum += value;
-
-      return sum;
+                                                  data.ThreadNum = Thread.CurrentThread.ManagedThreadId;
+                                                  Console.WriteLine("Task #{0} created at {1} on thread #{2}.",
+                                                                   data.Name, data.CreationTime, data.ThreadNum);
+                                               },
+                                               new CustomData() {Name = i, CreationTime = DateTime.Now.Ticks} );
+      }
+      Task.WaitAll(taskArray);
    }
 }
-// The example displays the following output:
-//        606.0 + 10,605.0 + 100,495.0 = 111,706.0
+// The example displays output like the following:
+//       Task #0 created at 635116412924597583 on thread #3.
+//       Task #1 created at 635116412924607584 on thread #4.
+//       Task #3 created at 635116412924607584 on thread #4.
+//       Task #4 created at 635116412924607584 on thread #4.
+//       Task #2 created at 635116412924607584 on thread #3.
+//       Task #6 created at 635116412924607584 on thread #3.
+//       Task #5 created at 635116412924607584 on thread #4.
+//       Task #8 created at 635116412924607584 on thread #4.
+//       Task #7 created at 635116412924607584 on thread #3.
+//       Task #9 created at 635116412924607584 on thread #4.
